@@ -2,8 +2,8 @@ name: Actualizar datos y publicar
 
 on:
   schedule:
-    - cron: "*/10 * * * *"   # se lanza cada 10 min; DENTRO hace un bucle cada ~2 min
-  workflow_dispatch:          # permite lanzarlo a mano
+    - cron: "*/15 * * * *"   # GitHub lo relanza cuando puede; el job dura ~5,5h y se encadena
+  workflow_dispatch:
 
 concurrency:
   group: exporter
@@ -12,7 +12,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 350       # el job vive ~5,5h y refresca en bucle; el schedule lo re-lanza
     steps:
       - uses: actions/checkout@v4
 
@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Persistencia entre ejecuciones: BD, token, fotos y el hash del último deploy.
+      # Persistencia entre ejecuciones: BD (historial + timestamps de niveles), token y fotos.
       - name: Restaurar estado
         uses: actions/cache@v4
         with:
@@ -28,7 +28,6 @@ jobs:
             fantasy.db
             .token.json
             web/img
-            .last_deploy_hash
           key: state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             state-
@@ -47,32 +46,26 @@ jobs:
           pip install --quiet -r exporter/requirements.txt
           npm install -g wrangler@latest >/dev/null 2>&1 || true
 
-      # GitHub no admite cron < 5 min, así que el job hace un BUCLE cada ~2 min durante
-      # ~10 min y el cron lo relanza (concurrency serializa) -> cadencia continua ~2 min.
-      # CLAVE: publica en Cloudflare SOLO si los datos cambian de verdad (hash ignorando
-      # timestamps). Así no re-propagamos el alias cada 2 min (evita parpadeos en /api =
-      # login) cuando no hay novedades; y cuando SÍ las hay, sale enseguida.
-      - name: Bucle de actualizacion (cada ~2 min, deploy solo si cambian datos)
+      # Bucle continuo: cada ~9 min actualiza los datos y PUBLICA (siempre, para que la marca
+      # "Actualizado" avance de verdad). Los deploys van espaciados (no en ráfaga), así el login
+      # no parpadea. Los niveles del exportador evitan machacar las fuentes.
+      - name: Bucle continuo (actualiza + publica cada ~9 min)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          datahash() { sed -E 's/[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.+Z-]+//g' web/data/metrics.js 2>/dev/null | sha1sum | cut -d" " -f1; }
-          for i in 1 2 3 4 5; do
-            echo "::group::ciclo $i de 5"
-            python -m exporter.run || echo "exportador fallo en ciclo $i (continuo)"
+          END=$(( $(date +%s) + 330*60 ))
+          i=0
+          while [ "$(date +%s)" -lt "$END" ]; do
+            i=$((i+1)); echo "::group::ciclo $i · $(date -u +%H:%M) UTC"
+            python -m exporter.run || echo "exportador falló en este ciclo (continúo)"
             if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
-              H="$(datahash)"; LAST="$(cat .last_deploy_hash 2>/dev/null || true)"
-              if [ -n "$H" ] && [ "$H" != "$LAST" ]; then
-                if wrangler pages deploy --project-name matelekinhos-fantasy --branch main --commit-dirty=true; then
-                  printf '%s' "$H" > .last_deploy_hash
-                  echo "publicado (los datos cambiaron)"
-                fi
-              else
-                echo "sin cambios de datos: no re-publico"
-              fi
+              wrangler pages deploy --project-name matelekinhos-fantasy --branch main --commit-dirty=true \
+                || echo "deploy falló en este ciclo (continúo)"
+            else
+              echo "Falta CLOUDFLARE_API_TOKEN: salto el deploy."
             fi
             echo "::endgroup::"
-            if [ "$i" -lt 5 ]; then sleep 110; fi
+            [ "$(date +%s)" -lt "$END" ] && sleep 540 || true
           done
-          echo "bucle completado"
+          echo "bucle terminado; el schedule lo relanzará."

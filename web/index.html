@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0A0F1C" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>LaLiga Fantasy · Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Sora:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brandbox">
+        <div class="logo"><span class="lliga">LaLiga</span><span class="fantasy">Fantasy</span></div>
+        <h1 class="display" id="brandLeague">Mi liga</h1>
+        <div class="leaguepick" id="leaguePick" hidden></div>
+      </div>
+      <div class="meta" id="meta"></div>
+    </header>
+
+    <div class="ticker" aria-label="Ticker de mercado"><div class="ticker-track" id="ticker"></div></div>
+    <div class="ticker tape" aria-label="Cinta de operaciones"><div class="ticker-track" id="tape"></div></div>
+    <div class="indices" id="indices" aria-label="Índices de la liga"></div>
+
+    <div class="gsearch">
+      <input type="search" id="globalSearch" placeholder="🔎  Buscar jugador o presidente…" autocomplete="off" aria-label="Buscar" />
+      <div class="gsearch-res" id="gsearchRes" hidden></div>
+    </div>
+
+    <nav class="tabsnav" id="tabsNav" role="tablist">
+      <button data-tab="miequipo" class="active">Mi equipo</button>
+      <button data-tab="asistente">🧠 Asistente</button>
+      <button data-tab="resumen">Resumen</button>
+      <button data-tab="clasificacion">Clasificación</button>
+      <button data-tab="mercado">Mercado</button>
+      <button data-tab="movimientos">Movimientos</button>
+      <button data-tab="jugadores">Jugadores</button>
+      <button data-tab="estadisticas">Estadísticas</button>
+      <button data-tab="presidentes">Presidentes</button>
+      <button data-tab="partidos">Partidos</button>
+      <button data-tab="onces">Onces</button>
+      <button data-tab="clausulazos">Clausulómetro</button>
+      <button data-tab="actividad">Actividad</button>
+    </nav>
+
+    <!-- ===================== MI EQUIPO ===================== -->
+    <section class="tab" data-tab="miequipo">
+      <div id="myTeam"></div>
+    </section>
+
+    <!-- ===================== ASISTENTE ===================== -->
+    <section class="tab" data-tab="asistente" hidden>
+      <div id="assistant"></div>
+    </section>
+
+    <!-- ===================== RESUMEN ===================== -->
+    <section class="tab" data-tab="resumen" hidden>
+      <div class="kpis" id="kpis"></div>
+      <div class="masonry">
+        <div class="col">
+          <section class="card" id="recordsCard"><h2 class="display">Récords de la liga</h2><div class="records" id="records"></div></section>
+          <section class="card" id="jornadaCard"><h2 class="display">Manager de la jornada</h2><div class="jornada" id="jornada"></div></section>
+        <section class="card" id="injCard"><h2 class="display">Bajas y dudas <span class="count" id="injCount"></span></h2><div class="injuries" id="injuries"></div></section>
+        </div>
+        <div class="col">
+          <section class="card" id="moversMiniCard"><h2 class="display">Mercado en movimiento</h2>
+            <div class="movers"><div><p class="movers-h up">▲ Suben</p><div id="moversUp"></div></div><div><p class="movers-h down">▼ Bajan</p><div id="moversDown"></div></div></div>
+          </section>
+          <section class="card" id="newsCard"><h2 class="display">Noticias y rumores <span class="count">vía futbolfantasy</span></h2><div class="news" id="news"></div></section>
+        </div>
+        <div class="col">
+          <section class="card" id="feedCard"><h2 class="display">Novedades</h2><div class="feed" id="feed"></div></section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CLASIFICACIÓN ===================== -->
+    <section class="tab" data-tab="clasificacion" hidden>
+      <section class="card" id="standCard">
+        <h2 class="display">Clasificación <span class="count" id="standCount"></span></h2>
+        <div class="controls"><input type="search" id="standSearch" placeholder="Buscar presidente…" aria-label="Buscar presidente" /><button class="tvbtn" id="tvBtn">📺 Modo TV</button></div>
+        <p class="hint">Pulsa una columna para ordenar</p>
+        <div class="tablewrap"><table class="stand" id="tblStand"><thead><tr>
+          <th class="l" data-sk="n">#</th><th class="l" data-sk="t">Presidente</th><th data-sk="n">Puntos</th><th data-sk="n">Jornada</th><th data-sk="n">Valor</th>
+          <th data-sk="n" title="Puntos por millón de valor">Pts/M€</th><th class="l">Tendencia</th>
+        </tr></thead><tbody id="standBody"></tbody></table></div>
+      </section>
+      <div class="grid2">
+        <section class="card" id="evoCard"><h2 class="display">Evolución <span class="count">puntos por corte</span></h2><div class="chart" id="evo"></div><div class="chart-legend" id="evoLegend"></div><p class="chart-note"><b>Eje Y ↑</b> puntos totales · <b>Eje X →</b> capturas en el tiempo (izquierda→derecha = más reciente)</p></section>
+        <section class="card" id="scatterCard"><h2 class="display">Valor vs Puntos</h2><div class="chart" id="scatter"></div><p class="chart-note"><b>Eje X →</b> valor de plantilla (M€) · <b>Eje Y ↑</b> puntos totales · cada punto = un presidente (arriba-derecha = mucho valor y muchos puntos)</p></section>
+      </div>
+      <section class="card" id="patCard"><h2 class="display">Patrimonio en el tiempo <span class="count">valor de plantilla por presidente</span></h2><div class="chart" id="patrimonio"></div><div class="chart-legend" id="patLegend"></div></section>
+      <div class="grid2">
+        <section class="card" id="valueBarCard"><h2 class="display">Valor de plantilla</h2><div class="bars" id="valueBars"></div></section>
+        <section class="card" id="streakCard"><h2 class="display">Rachas</h2><div class="streaks" id="streaks"></div></section>
+      </div>
+    </section>
+
+    <!-- ===================== MERCADO ===================== -->
+    <section class="tab" data-tab="mercado" hidden>
+      <div class="grid2">
+        <section class="card" id="topCard"><h2 class="display">Mejores jugadores</h2><div class="tabs" id="topTabs"></div><div class="toplist" id="topList"></div></section>
+        <section class="card" id="marketCard"><h2 class="display">Mercado ahora <span class="count" id="marketCount"></span></h2><div class="market" id="marketList"></div></section>
+      </div>
+      <div class="grid2">
+        <section class="card" id="priceMapCard"><h2 class="display">Mapa de precios <span class="count">nº de jugadores por valor</span></h2><div class="bars" id="priceMap"></div></section>
+        <section class="card" id="teamValCard"><h2 class="display">Valor por equipo</h2><div class="bars" id="teamVal"></div></section>
+      </div>
+    </section>
+
+    <!-- ===================== MOVIMIENTOS DEL DÍA ===================== -->
+    <section class="tab" data-tab="movimientos" hidden>
+      <div class="movhead">
+        <h2 class="display">Movimientos del día <span class="count">subidas y bajadas de valor</span></h2>
+        <p class="movsub">La cotización de LaLiga se recalcula de madrugada (~00:15&nbsp;h); cada mañana verás aquí lo que subió y bajó esa noche. Pincha en un jugador para su histórico de valor.</p>
+      </div>
+      <div class="mktnote" id="mktNote" hidden></div>
+      <div class="grid2 screener">
+        <section class="card up" id="dailyUpCard"><h2 class="display"><span class="up">▲</span> Subidas de hoy <span class="count">top 15</span></h2><div class="toplist" id="dailyUp"></div></section>
+        <section class="card down" id="dailyDownCard"><h2 class="display"><span class="down">▼</span> Bajadas de hoy <span class="count">top 15</span></h2><div class="toplist" id="dailyDown"></div></section>
+      </div>
+      <section class="card" id="valoresCard">
+        <h2 class="display">Mercado de valores <span class="count">valor · variación 24h · racha</span></h2>
+        <div class="controls"><div class="chips" id="valPos"></div><input type="search" id="valSearch" placeholder="Buscar jugador…" aria-label="Buscar jugador" /></div>
+        <div class="ptable-wrap"><table class="ptable" id="tblValores"><thead><tr>
+          <th class="l" data-sk="t">Jugador</th><th>Equipo</th><th data-sk="n">Valor</th><th data-sk="n">Δ 24h</th><th class="l">Racha</th>
+        </tr></thead><tbody id="valoresBody"></tbody></table></div>
+      </section>
+      <div class="grid2">
+        <section class="card" id="momUpCard"><h2 class="display">Momentum al alza <span class="count">acelera o frena su subida</span></h2>
+          <div class="mom"><div><p class="movers-h up">Acelera ⏫</p><div class="toplist" id="accelUp"></div></div><div><p class="movers-h up">Frena 🔽</p><div class="toplist" id="brakeUp"></div></div></div></section>
+        <section class="card" id="momDownCard"><h2 class="display">Momentum a la baja <span class="count">acelera o frena su bajada</span></h2>
+          <div class="mom"><div><p class="movers-h down">Acelera ⏬</p><div class="toplist" id="accelDown"></div></div><div><p class="movers-h down">Frena 🔼</p><div class="toplist" id="brakeDown"></div></div></div></section>
+      </div>
+      <div class="grid2">
+        <section class="card" id="predCard"><h2 class="display">Predicción de mercado <span class="count">top subidas previstas</span></h2><div class="toplist" id="predList"></div></section>
+        <section class="card" id="teamPatCard"><h2 class="display">Patrones por equipo <span class="count">cambio de valor</span></h2><div class="bars" id="teamPat"></div></section>
+      </div>
+    </section>
+
+    <!-- ===================== JUGADORES ===================== -->
+    <section class="tab" data-tab="jugadores" hidden>
+      <section class="card">
+        <h2 class="display">Jugadores <span class="count" id="playersCount"></span></h2>
+        <div class="controls">
+          <input type="search" id="playerSearch" placeholder="Buscar jugador…" aria-label="Buscar jugador" />
+          <div class="chips" id="posFilter"></div>
+          <select id="playerSort" aria-label="Ordenar jugadores">
+            <option value="value">Ordenar: valor</option>
+            <option value="points">Ordenar: puntos</option>
+            <option value="clause">Ordenar: cláusula</option>
+            <option value="name">Ordenar: nombre</option>
+          </select>
+        </div>
+        <div class="ptable-wrap"><table class="ptable" id="tblPlayers"><thead><tr>
+          <th class="l" data-sk="t">Jugador</th><th>Pos</th><th data-sk="n">Valor</th><th data-sk="n">Cláusula</th><th data-sk="n">Puntos</th><th class="l" data-sk="t">Presidente</th>
+        </tr></thead><tbody id="playersBody"></tbody></table></div>
+      </section>
+    </section>
+
+    <!-- ===================== ESTADÍSTICAS ===================== -->
+    <section class="tab" data-tab="estadisticas" hidden>
+      <section class="card" id="statsCard">
+        <h2 class="display">Estadísticas de jugadores <span class="count" id="statsCount"></span></h2>
+        <p class="placeholder" id="statsNote" hidden></p>
+        <div class="controls">
+          <input type="search" id="statsSearch" placeholder="Buscar jugador…" aria-label="Buscar jugador" />
+          <select id="statsPos" aria-label="Posición">
+            <option value="ALL">Todas las posiciones</option>
+            <option value="POR">Porteros</option>
+            <option value="DEF">Defensas</option>
+            <option value="MED">Medios</option>
+            <option value="DEL">Delanteros</option>
+          </select>
+          <span class="hint">Pulsa una columna para ordenar</span>
+        </div>
+        <div class="ptable-wrap"><table class="ptable statgrid"><thead><tr>
+          <th>#</th><th class="l">Jugador</th><th title="Posición">Pos</th>
+          <th class="srt" data-sort="matches" title="Partidos jugados">PJ</th>
+          <th class="srt" data-sort="minutes" title="Minutos jugados">Min</th>
+          <th class="srt" data-sort="goals" title="Goles">G</th>
+          <th class="srt" data-sort="assists" title="Asistencias">A</th>
+          <th class="srt" data-sort="shots" title="Remates">Rem</th>
+          <th class="srt" data-sort="clears" title="Despejes">Desp</th>
+          <th class="srt" data-sort="recoveries" title="Recuperaciones">Rec</th>
+          <th class="srt" data-sort="saves" title="Paradas">Par</th>
+          <th class="srt" data-sort="cleanSheets" title="Porterías a cero">PC</th>
+          <th class="srt" data-sort="yellow" title="Tarjetas amarillas">TA</th>
+          <th class="srt" data-sort="red" title="Tarjetas rojas">TR</th>
+          <th class="srt" data-sort="points" title="Puntos esta temporada">Pts</th>
+          <th class="srt" data-sort="lastPts" title="Puntos temporada 2025/26">25/26</th>
+          <th class="srt" data-sort="avg" title="Media de puntos">Med</th>
+          <th class="srt" data-sort="value" title="Valor de mercado">Valor</th>
+        </tr></thead><tbody id="statsBody"></tbody></table></div>
+      </section>
+    </section>
+
+    <!-- ===================== PRESIDENTES ===================== -->
+    <section class="tab" data-tab="presidentes" hidden>
+      <section class="card" id="mgrEvoCard"><h2 class="display">Evolución del valor de plantilla <span class="count">todos los presidentes</span></h2>
+        <div class="chart" id="mgrEvo"></div><div class="chart-legend" id="mgrEvoLegend"></div>
+        <p class="chart-note"><b>Eje Y ↑</b> valor total de plantilla (€) · <b>Eje X →</b> fecha de cada captura · cada línea = un presidente · <b>pulsa un nombre</b> de la leyenda para ver solo esa línea</p>
+      </section>
+      <section class="card" id="mgrPtsCard"><h2 class="display">Evolución de puntos <span class="count">todos los presidentes</span></h2>
+        <div class="chart" id="mgrPts"></div><div class="chart-legend" id="mgrPtsLegend"></div>
+        <p class="chart-note"><b>Eje Y ↑</b> puntos totales · <b>Eje X →</b> fecha de cada captura · <b>pulsa un nombre</b> para aislar su línea</p>
+      </section>
+      <section class="card" id="compareSquadsCard"><h2 class="display">Comparar plantillas</h2>
+        <div class="controls"><select id="sqA" aria-label="Presidente A"></select><span class="vslabel">VS</span><select id="sqB" aria-label="Presidente B"></select></div>
+        <div class="sqcompare" id="sqCompare"></div>
+      </section>
+      <section class="card"><h2 class="display">Presidentes <span class="count" id="mgrCount"></span></h2>
+        <div class="controls"><input type="search" id="mgrSearch" placeholder="Buscar presidente…" aria-label="Buscar presidente" /></div>
+        <div class="mgrgrid" id="mgrGrid"></div>
+      </section>
+    </section>
+
+    <!-- ===================== PARTIDOS ===================== -->
+    <section class="tab" data-tab="partidos" hidden>
+      <div id="mdHero" hidden></div>
+      <section class="card"><h2 class="display">Calendario <span class="count">todas las jornadas · pulsa un partido para la previa</span></h2>
+        <div class="controls cal-nav">
+          <button class="navbtn" id="calPrev" aria-label="Jornada anterior">◀</button>
+          <select id="calSel" aria-label="Jornada"></select>
+          <button class="navbtn" id="calNext" aria-label="Jornada siguiente">▶</button>
+          <button class="linkbtn" id="calToday">jornada actual</button>
+        </div>
+        <div class="fixtures" id="fixtures"></div>
+      </section>
+      <section class="card" id="fdCard"><h2 class="display">Dificultad de calendario <span class="count">próximas jornadas · verde=fácil, rojo=difícil</span></h2>
+        <div class="fdwrap" id="fixdiff"></div>
+      </section>
+      <section class="card" id="ltCard"><h2 class="display">Clasificación LaLiga <span class="count">real</span></h2>
+        <div class="ptable-wrap"><table class="ptable standings" id="tblLaliga">
+          <thead><tr><th data-sk="n">#</th><th class="l" data-sk="t">Equipo</th>
+            <th data-sk="n" title="Partidos jugados">PJ</th><th data-sk="n" title="Ganados">G</th><th data-sk="n" title="Empatados">E</th><th data-sk="n" title="Perdidos">P</th>
+            <th data-sk="n" title="Goles a favor">GF</th><th data-sk="n" title="Goles en contra">GC</th><th data-sk="n" title="Diferencia de goles">DG</th>
+            <th data-sk="n" title="Puntos">Pts</th></tr></thead>
+          <tbody id="ltBody"></tbody></table></div>
+      </section>
+      <section class="card" id="tcCard"><h2 class="display">Calendario por equipo <span class="count">todas las competiciones</span></h2>
+        <select id="tcSel" aria-label="Equipo"></select>
+        <div class="tcal" id="tcList"></div>
+      </section>
+    </section>
+
+    <!-- ===================== ONCES PROBABLES ===================== -->
+    <section class="tab" data-tab="onces" hidden>
+      <section class="card" id="oncesCard"><h2 class="display">Onces probables <span class="count">vía futbolfantasy · % probabilidad</span></h2>
+        <div class="controls"><select id="onceSel" aria-label="Equipo"></select><span class="formlabel" id="onceForm"></span></div>
+        <div class="pitch" id="pitch"></div>
+        <div class="bench-title" id="benchTitle"></div>
+        <div class="bench" id="bench"></div>
+      </section>
+    </section>
+
+    <!-- ===================== CLAUSULÓMETRO ===================== -->
+    <section class="tab" data-tab="clausulazos" hidden>
+      <section class="card" id="clausuCard">
+        <h2 class="display">Clausulómetro <span class="count">¿a quién puedes robar por cláusula?</span></h2>
+        <div id="clausuDeadline"></div>
+        <div class="clausu-head" id="clausuHead"></div>
+        <div class="controls clausu-controls">
+          <label class="slabel">Caja: <b id="cajaVal"></b></label>
+          <input type="range" id="cajaSlider" min="0" step="500000" />
+          <label class="chk"><input type="checkbox" id="onlyAfford" /> Solo asequibles</label>
+          <input type="search" id="clausuSearch" placeholder="Buscar jugador o presidente…" />
+        </div>
+        <div class="ptable-wrap"><table class="ptable" id="tblClausu"><thead><tr>
+          <th class="l" data-sk="t">Jugador</th><th>Pos</th><th class="l" data-sk="t">Presidente</th><th data-sk="n">Valor</th><th data-sk="n">Cláusula</th><th class="l"></th>
+        </tr></thead><tbody id="clausuBody"></tbody></table></div>
+      </section>
+      <section class="card" id="chollosCard"><h2 class="display">Chollos de cláusula <span class="count">valiosos con cláusula baja</span></h2>
+        <div class="toplist" id="chollos"></div>
+      </section>
+    </section>
+
+    <!-- ===================== ACTIVIDAD ===================== -->
+    <section class="tab" data-tab="actividad" hidden>
+      <div class="grid2">
+        <section class="card"><h2 class="display">Historial de operaciones <span class="count" id="actCount"></span></h2>
+          <div class="controls"><div class="chips" id="actFilter"></div><input type="search" id="actSearch" placeholder="Buscar jugador o presidente…" aria-label="Buscar" /></div>
+          <div class="actlog" id="actLog"></div>
+        </section>
+        <div class="col">
+          <section class="card" id="spendCard"><h2 class="display">Ranking de gasto</h2><div class="bars" id="spend"></div></section>
+          <section class="card" id="opsCard"><h2 class="display">Operaciones por presidente</h2><div class="bars" id="opsBars"></div></section>
+        </div>
+      </div>
+    </section>
+
+    <footer>Datos de tu liga vía la API de LaLiga Fantasy · uso personal · se actualiza solo cada pocas horas</footer>
+  </div>
+
+  <!-- modal drill-down -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <button class="modal-x" data-close aria-label="Cerrar">✕</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="data/metrics.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

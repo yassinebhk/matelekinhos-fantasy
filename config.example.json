@@ -1,0 +1,6 @@
+{
+  "_comment": "Copia este fichero a config.json y rellenalo. config.json esta en .gitignore.",
+  "email": "TU_EMAIL_DE_LALIGA_FANTASY",
+  "password": "TU_CONTRASENA",
+  "league_id": ""
+}

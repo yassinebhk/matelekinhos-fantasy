@@ -1,0 +1,7 @@
+name = "matelekinhos-fantasy"
+pages_build_output_dir = "web"
+compatibility_date = "2024-11-01"
+
+[[kv_namespaces]]
+binding = "FF_BINDINGS"
+id = "a942444496c84813b2faca056b0489b9"

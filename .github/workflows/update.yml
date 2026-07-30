@@ -1,0 +1,78 @@
+name: Actualizar datos y publicar
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # se lanza cada 10 min; DENTRO hace un bucle cada ~2 min
+  workflow_dispatch:          # permite lanzarlo a mano
+
+concurrency:
+  group: exporter
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Persistencia entre ejecuciones: BD, token, fotos y el hash del último deploy.
+      - name: Restaurar estado
+        uses: actions/cache@v4
+        with:
+          path: |
+            fantasy.db
+            .token.json
+            web/img
+            .last_deploy_hash
+          key: state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            state-
+
+      - name: Reconstruir credenciales desde secretos
+        env:
+          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
+          LALIGA_TOKEN_JSON: ${{ secrets.LALIGA_TOKEN_JSON }}
+        run: |
+          printf '%s' "$CONFIG_JSON" > config.json
+          if [ ! -s .token.json ]; then printf '%s' "$LALIGA_TOKEN_JSON" > .token.json; fi
+          chmod 600 config.json .token.json
+
+      - name: Dependencias
+        run: |
+          pip install --quiet -r exporter/requirements.txt
+          npm install -g wrangler@latest >/dev/null 2>&1 || true
+
+      # GitHub no admite cron < 5 min, así que el job hace un BUCLE cada ~2 min durante
+      # ~10 min y el cron lo relanza (concurrency serializa) -> cadencia continua ~2 min.
+      # CLAVE: publica en Cloudflare SOLO si los datos cambian de verdad (hash ignorando
+      # timestamps). Así no re-propagamos el alias cada 2 min (evita parpadeos en /api =
+      # login) cuando no hay novedades; y cuando SÍ las hay, sale enseguida.
+      - name: Bucle de actualizacion (cada ~2 min, deploy solo si cambian datos)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          datahash() { sed -E 's/[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.+Z-]+//g' web/data/metrics.js 2>/dev/null | sha1sum | cut -d" " -f1; }
+          for i in 1 2 3 4 5; do
+            echo "::group::ciclo $i de 5"
+            python -m exporter.run || echo "exportador fallo en ciclo $i (continuo)"
+            if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+              H="$(datahash)"; LAST="$(cat .last_deploy_hash 2>/dev/null || true)"
+              if [ -n "$H" ] && [ "$H" != "$LAST" ]; then
+                if wrangler pages deploy --project-name matelekinhos-fantasy --branch main --commit-dirty=true; then
+                  printf '%s' "$H" > .last_deploy_hash
+                  echo "publicado (los datos cambiaron)"
+                fi
+              else
+                echo "sin cambios de datos: no re-publico"
+              fi
+            fi
+            echo "::endgroup::"
+            if [ "$i" -lt 5 ]; then sleep 110; fi
+          done
+          echo "bucle completado"

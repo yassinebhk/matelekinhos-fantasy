@@ -1,0 +1,17 @@
+config.json
+.token.json
+fantasy.db
+web/data/metrics.js
+__pycache__/
+*.pyc
+.venv/
+*.log
+.login_pkce.json
+web/img/
+
+users.db
+server/.secret
+.env
+.wrangler/
+node_modules/
+.DS_Store

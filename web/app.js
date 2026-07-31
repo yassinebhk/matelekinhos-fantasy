@@ -38,6 +38,16 @@
   const TEAMS = D.teams || {};
   const teamName = (p) => (p && p.teamId && TEAMS[p.teamId] && TEAMS[p.teamId].name) || (p && p.team) || "";
 
+  // movimientos del día ROBUSTOS: cambio real de valor por jugador (p.day), no la
+  // diferencia entre las dos últimas capturas (que es 0 si son del mismo día de valores).
+  // Es la misma fuente que usa el índice de la cabecera → ticker/mini/índice consistentes.
+  const dayMovers = (() => {
+    const m = players.filter(p => p.day).map(p => ({ id: p.id, player: p.name, value: p.value, delta: p.day, deltaPct: p.value ? Math.round(p.day / p.value * 1000) / 10 : 0 }));
+    const up = m.filter(x => x.delta > 0).sort((a, b) => b.delta - a.delta);
+    const down = m.filter(x => x.delta < 0).sort((a, b) => a.delta - b.delta);
+    return (up.length || down.length) ? { up, down } : (D.movers || { up: [], down: [] });
+  })();
+
   // ---------- movimientos (compra/venta/fichaje/cláusula) ----------
   // Dirección REAL de un traspaso: quién SUELTA → quién RECIBE (el mercado = null).
   // 33=venta al mercado (el actor va en `to`); 31=fichaje del mercado (sin vendedor);
@@ -443,8 +453,8 @@
   (function ticker() {
     const pct = m => m.deltaPct != null ? ` ${m.delta > 0 ? "+" : ""}${m.deltaPct}%` : "";
     const item = (m, k) => `<span class="ticker-item"${hasP(m.id) ? ` data-player="${esc(m.id)}"` : ""}><span class="name">${esc(m.player)}</span> ${eurK(m.value)} <span class="${k}">${k === "up" ? "▲" : "▼"}${eurK(Math.abs(m.delta || 0))}${pct(m)}</span></span>`;
-    const up = ((D.movers && D.movers.up) || []).filter(m => m.delta).slice(0, 12).map(m => item(m, "up"));
-    const down = ((D.movers && D.movers.down) || []).filter(m => m.delta).slice(0, 12).map(m => item(m, "down"));
+    const up = (dayMovers.up || []).filter(m => m.delta).slice(0, 12).map(m => item(m, "up"));
+    const down = (dayMovers.down || []).filter(m => m.delta).slice(0, 12).map(m => item(m, "down"));
     // intercalar subidas y bajadas para que la cinta alterne verde/rojo
     const items = [];
     for (let i = 0; i < Math.max(up.length, down.length); i++) { if (up[i]) items.push(up[i]); if (down[i]) items.push(down[i]); }
@@ -474,7 +484,7 @@
     const totalVal = st.reduce((a, r) => a + (r.teamValue || 0), 0);
     const dayChange = owned.reduce((a, p) => a + (p.day || 0), 0);
     const pct = totalVal ? dayChange / totalVal * 100 : 0;
-    const up = (D.movers && D.movers.up) || [], down = (D.movers && D.movers.down) || [];
+    const up = dayMovers.up || [], down = dayMovers.down || [];
     const topUp = up.find(m => m.delta), topDn = down.find(m => m.delta);
     const ops = (D.transfers || []).length, onMkt = (D.market || []).length;
     const arr = v => v > 0 ? "▲" : v < 0 ? "▼" : "•", cl = v => v > 0 ? "up" : v < 0 ? "down" : "";
@@ -533,7 +543,7 @@
   })();
 
   (function moversMini() {
-    const up = (D.movers && D.movers.up) || [], dn = (D.movers && D.movers.down) || [];
+    const up = dayMovers.up || [], dn = dayMovers.down || [];
     if (!up.length && !dn.length) { hide("moversMiniCard"); return; }
     const row = (m, k) => `<div class="mv-row" data-player="${esc(m.id || "")}"><span class="name">${esc(m.player)}</span><span class="mv-d ${k}">${m.delta ? signed(m.delta) : eur(m.value)}</span></div>`;
     $("#moversUp").innerHTML = up.length ? up.slice(0, 8).map(m => row(m, "up")).join("") : `<p class="placeholder">—</p>`;
@@ -1233,7 +1243,7 @@
       const A = [];
       injured.forEach(s => A.push([statusBadge(s.e.status), `<b>${esc(s.name)}</b> ${(STATUS[s.e.status] || {}).l || ""}`, ""]));
       movers.forEach(s => A.push([s.e.day > 0 ? "📈" : "📉", `<b>${esc(s.name)}</b> ${s.e.day > 0 ? "sube" : "baja"} de valor`, `<span class="amt ${s.e.day > 0 ? "up" : "down"}">${signed(s.e.day)}</span>`]));
-      acts.forEach(t => A.push([t.to === current ? "🟢" : "🔴", `${t.to === current ? "Fichaste a" : "Vendiste a"} <b>${esc(t.player)}</b>`, `<span class="amt">${eur(t.amount)}</span>`]));
+      acts.forEach(t => { const mine = moveDir(t).receiver === current; A.push([mine ? "🟢" : "🔴", `${mine ? "Fichaste a" : "Vendiste a"} <b>${esc(t.player)}</b>`, `<span class="amt">${eur(t.amount)}</span>`]); });
       $("#myAlerts").innerHTML = A.length ? A.map(a => `<div class="ev"><span class="tag">${a[0]}</span><span>${a[1]}</span>${a[2]}</div>`).join("") : `<p class="placeholder">Todo tranquilo: sin bajas ni movimientos relevantes.</p>`;
       $("#mySquad").innerHTML = squad.map(s => `<tr class="clickable" data-player="${esc(s.id || "")}"><td class="l p-name-cell"><span class="cellface">${avatar(s.e.id ? s.e : s, 26)}${esc(s.name)} ${statusBadge(s.e.status)}</span></td><td>${posChip(s.pos)}</td><td class="num val">${eur(s.value)}</td><td class="num clause">${s.clause ? eur(s.clause) : "—"}</td><td class="num">${s.e.day != null && s.e.day !== 0 ? `<span class="${s.e.day > 0 ? "up" : "down"}">${signed(s.e.day)}</span>` : "—"}</td></tr>`).join("");
       const vHtml = valueEvoChart([{ name: current, cls: "hl", valueSeries: m.valueSeries, valueHistory: m.valueHistory }], 210);

@@ -42,7 +42,7 @@
   // diferencia entre las dos últimas capturas (que es 0 si son del mismo día de valores).
   // Es la misma fuente que usa el índice de la cabecera → ticker/mini/índice consistentes.
   const dayMovers = (() => {
-    const m = players.filter(p => p.day).map(p => ({ id: p.id, player: p.name, value: p.value, delta: p.day, deltaPct: p.value ? Math.round(p.day / p.value * 1000) / 10 : 0 }));
+    const m = players.filter(p => p.day).map(p => ({ id: p.id, player: p.name, pos: p.pos, img: p.img, official: p.official, value: p.value, day: p.day, delta: p.day, deltaPct: p.value ? Math.round(p.day / p.value * 1000) / 10 : 0, hist: (p.valueHistory || []).map(x => x.v) }));
     const up = m.filter(x => x.delta > 0).sort((a, b) => b.delta - a.delta);
     const down = m.filter(x => x.delta < 0).sort((a, b) => a.delta - b.delta);
     return (up.length || down.length) ? { up, down } : (D.movers || { up: [], down: [] });
@@ -702,20 +702,23 @@
       ? teamBars(A.teamByValue.map(t => ({ teamId: t.teamId, name: t.team, value: t.value })), "", eurK)
       : `<p class="placeholder">Sin datos de equipos.</p>`;
 
-    // Métricas de variación: necesitan ≥2 valores diarios distintos.
+    const fill = (id, list, right, empty) => { const el = $("#" + id); if (el) el.innerHTML = (list && list.length) ? list.map(r => mktRow(r, right(r))).join("") : `<p class="placeholder">${empty || "Sin datos."}</p>`; };
+    // Subidas/bajadas de hoy: MISMA fuente que el índice, el ticker y la tabla "Mercado de
+    // valores" (p.day), para que los rankings coincidan siempre.
+    fill("dailyUp", dayMovers.up.slice(0, 15), r => `<span class="up">${signed(r.day)}</span>`, "Sin subidas de valor hoy.");
+    fill("dailyDown", dayMovers.down.slice(0, 15), r => `<span class="down">${signed(r.day)}</span>`, "Sin bajadas de valor hoy.");
+
+    // Momentum / predicción / patrones: dependen del motor de análisis (≥2 valores distintos).
     const note = $("#mktNote");
     if (!A.hasHistory) {
       note.hidden = false;
-      note.innerHTML = `⏳ Las métricas de <b>variación de valor</b> (subidas y bajadas de hoy, momentum acelera/frena, predicción y patrones por equipo) se activan con el <b>primer cambio de valor diario</b> del mercado — en la próxima actualización automática tras las 00:15&nbsp;h. Ahora todas las capturas son del mismo día, así que aún no hay variación. La tabla del final ya muestra el valor y la racha de cada jugador.`;
-      ["predCard", "teamPatCard", "dailyUpCard", "dailyDownCard", "momUpCard", "momDownCard"].forEach(hide);
+      note.innerHTML = `⏳ El <b>momentum</b> (acelera/frena), la <b>predicción</b> y los <b>patrones por equipo</b> se activan con más histórico de valores (se acumula solo). Las subidas y bajadas de hoy ya las tienes arriba.`;
+      ["predCard", "teamPatCard", "momUpCard", "momDownCard"].forEach(hide);
       return;
     }
     note.hidden = true;
-    const fill = (id, list, right, empty) => { const el = $("#" + id); if (el) el.innerHTML = (list && list.length) ? list.map(r => mktRow(r, right(r))).join("") : `<p class="placeholder">${empty || "Sin datos."}</p>`; };
     const momTag = r => `<span class="mono" style="font-size:11px;text-align:right;display:inline-block">hoy ${signedK(r.day)}<br><span style="color:var(--ink-mute)">ayer ${signedK(r.prev)}</span></span>`;
     fill("predList", A.predicted, r => `<span class="up">▲ ${signed(r.day)}</span>`, "Sin previsiones aún.");
-    fill("dailyUp", A.dailyUp, r => `<span class="up">${signed(r.day)}</span>`, "Sin subidas hoy.");
-    fill("dailyDown", A.dailyDown, r => `<span class="down">${signed(r.day)}</span>`, "Sin bajadas hoy.");
     fill("accelUp", A.accelUp, momTag); fill("brakeUp", A.brakeUp, momTag);
     fill("accelDown", A.accelDown, momTag); fill("brakeDown", A.brakeDown, momTag);
     const pat = (A.teamBest || []).map(t => ({ teamId: t.teamId, name: t.team, value: t.delta })).concat((A.teamWorst || []).map(t => ({ teamId: t.teamId, name: t.team, value: t.delta })));

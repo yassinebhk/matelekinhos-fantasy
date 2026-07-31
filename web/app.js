@@ -475,6 +475,23 @@
     el.innerHTML = items.join("") + items.join("");
   })();
 
+  // Igualar la VELOCIDAD (px/seg) de las dos cintas: la de operaciones iba más rápida
+  // porque tenía duración fija distinta y otro ancho. Fijamos el mismo px/seg (el del
+  // ticker de mercado, ~70s) y calculamos la duración de cada una según su ancho real.
+  (function syncTickerSpeeds() {
+    const m = $("#ticker"), t = $("#tape");
+    if (!m || !t) return;
+    const apply = () => {
+      const wm = m.scrollWidth; if (!wm) return;
+      const speed = (wm / 2) / 70;                    // px/seg de referencia (mercado)
+      m.style.animationDuration = "70s";              // mercado igual que antes
+      const wt = t.scrollWidth; if (wt && speed) t.style.animationDuration = Math.max(20, (wt / 2) / speed).toFixed(1) + "s";
+    };
+    apply();
+    if (window.requestAnimationFrame) requestAnimationFrame(apply);   // por si el ancho aún no estaba listo
+    window.addEventListener("resize", apply);
+  })();
+
   const st = D.standings || [];
 
   // ---------- barra de índices tipo bolsa (valor liga, movers, volumen) ----------
